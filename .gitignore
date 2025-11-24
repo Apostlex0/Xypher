@@ -57,3 +57,7 @@ temp/
 # Solana
 .config/solana/
 keypairs/*.json
+
+# Arcium
+arcium/build/
+arcium/artifacts/

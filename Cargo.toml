@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "programs/*",
-    "encrypted-ixs"
+    "arcium/encrypted-ixs"
 ]
 resolver = "2"
 
