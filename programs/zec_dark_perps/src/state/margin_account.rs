@@ -14,6 +14,9 @@ pub struct MarginAccount {
     /// Total debt (we’ll use this when lending/borrowing is wired).
     pub debt: u64,
 
+    /// Flag indicating if this account is liquidatable (set by Arcium health check callback).
+    pub is_liquidatable: bool,
+
     /// PDA bump seed.
     pub bump: u8,
 }

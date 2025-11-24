@@ -10,4 +10,13 @@ pub enum ErrorCode {
 
     #[msg("Insufficient collateral for withdrawal")]
     InsufficientCollateral,
+
+    #[msg("Arcium computation was aborted")]
+    AbortedComputation,
+
+    #[msg("Unauthorized liquidation attempt")]
+    UnauthorizedLiquidation,
+
+    #[msg("Position is healthy, cannot liquidate")]
+    HealthyPosition,
 }

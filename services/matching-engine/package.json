@@ -1,0 +1,31 @@
+{
+  "name": "matching-engine",
+  "version": "1.0.0",
+  "description": "Off-chain matching engine for ZEC Dark Perps",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "webhook:create": "ts-node scripts/createWebhook.ts",
+    "webhook:list": "ts-node scripts/createWebhook.ts list",
+    "webhook:delete": "ts-node scripts/createWebhook.ts delete"
+  },
+  "keywords": ["solana", "trading", "orderbook"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/web3.js": "^1.95.8",
+    "@solana/spl-token": "^0.4.9",
+    "express": "^4.21.2",
+    "dotenv": "^16.4.7",
+    "cross-fetch": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "ts-node-dev": "^2.0.0"
+  }
+}

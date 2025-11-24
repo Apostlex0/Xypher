@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-zec_dark_perps = "GX2qLDQRuA8LCkHYQaQxkno1VWz442ZyKcA31w27yLAo"
+zec_dark_perps = "6SAEE3DKSYxj8rqMgzP2pkWWgivkN5cfkDtcNRFyhv5"
 
 [registry]
 url = "https://api.apr.dev"

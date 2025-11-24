@@ -11,6 +11,7 @@ pub fn initialize_margin_account(ctx: Context<InitializeMarginAccount>) -> Resul
     margin_account.owner = ctx.accounts.owner.key();
     margin_account.collateral = 0;
     margin_account.debt = 0;
+    margin_account.is_liquidatable = false;
     margin_account.bump = ctx.bumps.margin_account;
 
     Ok(())
@@ -92,7 +93,7 @@ pub struct InitializeMarginAccount<'info> {
         payer = owner,
         seeds = [MarginAccount::SEED_PREFIX, owner.key().as_ref()],
         bump,
-        space = 8 + 32 + 8 + 8 + 1, // discriminator + owner + collateral + debt + bump
+        space = 8 + 32 + 8 + 8 + 1 + 1, // discriminator + owner + collateral + debt + is_liquidatable + bump
     )]
     pub margin_account: Account<'info, MarginAccount>,
 
