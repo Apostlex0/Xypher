@@ -6,7 +6,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("Fg6PaFpoGXkYsidMpWFKp2Kk7g4AbfH7whpA5kU7G8dC"); // replace real program ID when deployed
+declare_id!("GX2qLDQRuA8LCkHYQaQxkno1VWz442ZyKcA31w27yLAo"); // replace real program ID when deployed
 
 #[program]
 pub mod zec_dark_perps {
