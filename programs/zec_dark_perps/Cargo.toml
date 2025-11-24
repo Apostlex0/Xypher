@@ -23,6 +23,7 @@ custom-panic = []
 [dependencies]
 anchor-lang = "0.32.1"
 anchor-spl = "0.32.1"
+arcium-anchor = "0.4.0"
 
 
 [lints.rust]

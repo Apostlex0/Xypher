@@ -5,6 +5,7 @@
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
   },
   "dependencies": {
+    "@arcium-hq/client": "^0.4.0",
     "@coral-xyz/anchor": "^0.32.1",
     "@solana/spl-token": "^0.4.14"
   },
