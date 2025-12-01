@@ -19,4 +19,21 @@ pub enum ErrorCode {
 
     #[msg("Position is healthy, cannot liquidate")]
     HealthyPosition,
+
+    // Bridge errors
+    #[msg("Insufficient validator signatures (need 2 of 3)")]
+    InsufficientSignatures,
+
+    #[msg("Unauthorized validator")]
+    UnauthorizedValidator,
+
+    #[msg("Deposit already processed")]
+    DepositAlreadyProcessed,
+
+    #[msg("Invalid Zcash transaction ID")]
+    InvalidZcashTxid,
+
+    // Arcium errors
+    #[msg("Arcium cluster not set")]
+    ClusterNotSet,
 }
