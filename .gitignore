@@ -61,3 +61,9 @@ keypairs/*.json
 # Arcium
 arcium/build/
 arcium/artifacts/
+
+# Zcash sensitive data
+config/zcash/spending-key.txt
+config/zcash/viewing-key.txt
+config/zcash/bridge-address.txt
+services/bridge-watcher/.env
