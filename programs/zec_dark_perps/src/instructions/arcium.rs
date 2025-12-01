@@ -4,7 +4,9 @@ use anchor_lang::prelude::*;
 use crate::state::margin_account::MarginAccount;
 
 // Computation definition offset for check_health encrypted instruction
-const COMP_DEF_OFFSET_CHECK_HEALTH: u32 = 0; // Placeholder until Arcium circuits are built
+// TODO: Implement health check circuit and use this constant
+#[allow(dead_code)]
+const COMP_DEF_OFFSET_CHECK_HEALTH: u32 = 0; // Placeholder for future health check implementation
 
 /// Initialize the computation definition for health checks
 /// This registers the Arcium MPC computation on-chain
@@ -59,7 +61,7 @@ pub fn health_check_callback(
 pub struct InitHealthCheckCompDef<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    
+
     /// Computation definition account
     /// CHECK: Arcium computation definition
     #[account(
@@ -68,7 +70,7 @@ pub struct InitHealthCheckCompDef<'info> {
         bump
     )]
     pub comp_def_account: UncheckedAccount<'info>,
-    
+
     pub system_program: Program<'info, System>,
 }
 
@@ -78,14 +80,14 @@ pub struct InitHealthCheckCompDef<'info> {
 pub struct QueueHealthCheck<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    
+
     /// The margin account being checked
     #[account(
         seeds = [MarginAccount::SEED_PREFIX, margin_account.owner.as_ref()],
         bump = margin_account.bump
     )]
     pub margin_account: Account<'info, MarginAccount>,
-    
+
     /// PDA for signing Arcium transactions
     /// CHECK: PDA for Arcium signing
     #[account(
@@ -93,33 +95,33 @@ pub struct QueueHealthCheck<'info> {
         bump
     )]
     pub sign_pda_account: UncheckedAccount<'info>,
-    
+
     /// Computation account
     /// CHECK: Arcium computation account
     #[account(mut)]
     pub computation_account: UncheckedAccount<'info>,
-    
+
     /// Arcium cluster account
     /// CHECK: Validated by Arcium program
     pub cluster_account: UncheckedAccount<'info>,
-    
+
     /// MXE account
     /// CHECK: Validated by Arcium program
     pub mxe_account: UncheckedAccount<'info>,
-    
+
     /// Mempool account
     /// CHECK: Validated by Arcium program
     pub mempool_account: UncheckedAccount<'info>,
-    
+
     /// Executing pool account
     /// CHECK: Validated by Arcium program
     pub executing_pool: UncheckedAccount<'info>,
-    
+
     /// Computation definition account
     /// CHECK: Arcium computation definition
     #[account(mut)]
     pub comp_def_account: UncheckedAccount<'info>,
-    
+
     pub system_program: Program<'info, System>,
 }
 
