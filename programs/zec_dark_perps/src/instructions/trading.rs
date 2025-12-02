@@ -5,19 +5,18 @@ use crate::state::margin_account::MarginAccount;
 
 /// Settle a matched trade between buyer and seller.
 /// Called by the off-chain matching engine after finding a match.
-/// 
-/// This updates both margin accounts:
-/// - Buyer: increases debt (borrows to go long)
-/// - Seller: increases debt (borrows to go short)
-/// 
-/// For MVP, we're simplifying:
-/// - No position tracking yet (will add in next iteration)
-/// - Just update debt to represent exposure
+///
+/// **PRIVACY:** Balance updates happen via Arcium MPC (see margin_arcium::queue_settle_trade)
+/// This function only validates and emits the trade event.
+/// The actual encrypted balance settlement is done separately via MPC.
+///
+/// For MVP:
 /// - Price and size are in fixed-point (multiply by 1e6)
+/// - Encrypted balance updates via MPC ensure privacy
 pub fn settle_trade(
     ctx: Context<SettleTrade>,
-    price: u64,  // Price in fixed-point (e.g., $50.00 = 50_000_000)
-    size: u64,   // Size in fixed-point (e.g., 1.5 ZEC = 1_500_000)
+    price: u64, // Price in fixed-point (e.g., $50.00 = 50_000_000)
+    size: u64,  // Size in fixed-point (e.g., 1.5 ZEC = 1_500_000)
 ) -> Result<()> {
     require!(price > 0, ErrorCode::InvalidAmount);
     require!(size > 0, ErrorCode::InvalidAmount);
@@ -30,31 +29,20 @@ pub fn settle_trade(
         .checked_div(1_000_000)
         .ok_or(ErrorCode::MathOverflow)? as u64;
 
-    let buyer_margin = &mut ctx.accounts.buyer_margin;
-    let seller_margin = &mut ctx.accounts.seller_margin;
-
-    // Buyer takes on debt (long position)
-    buyer_margin.debt = buyer_margin
-        .debt
-        .checked_add(trade_value)
-        .ok_or(ErrorCode::MathOverflow)?;
-
-    // Seller takes on debt (short position)
-    seller_margin.debt = seller_margin
-        .debt
-        .checked_add(trade_value)
-        .ok_or(ErrorCode::MathOverflow)?;
+    // NOTE: Encrypted balance updates must be done via margin_arcium::queue_settle_trade
+    // This keeps trade validation and encrypted accounting as separate steps
 
     // Emit event for off-chain tracking
     emit!(TradeExecuted {
-        buyer: buyer_margin.owner,
-        seller: seller_margin.owner,
+        buyer: ctx.accounts.buyer_margin.owner,
+        seller: ctx.accounts.seller_margin.owner,
         price,
         size,
         trade_value,
         timestamp: Clock::get()?.unix_timestamp,
     });
 
+    msg!("Trade validated. Call queue_settle_trade to update encrypted balances.");
     Ok(())
 }
 
