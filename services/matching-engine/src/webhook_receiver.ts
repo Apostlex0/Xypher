@@ -8,6 +8,7 @@
 
 import { PublicKey } from '@solana/web3.js';
 import { triggerLiquidation } from './liquidation';
+import { updateTradeSettlementByTx } from './database';
 
 // Simplified Helius webhook payload type
 interface HeliusWebhookPayload {
@@ -32,6 +33,21 @@ export async function handleHeliusWebhook(body: any): Promise<void> {
   for (const tx of payload.txs) {
     const logs: string[] = tx.logs || [];
 
+    // Look for trade settlement callbacks
+    if (logs.some(log => log.includes('SettleTradeCallback'))) {
+      console.log('✅ Trade settlement callback received!');
+      console.log('   Transaction:', tx.signature);
+      
+      // Check if computation completed successfully
+      if (logs.some(log => log.includes('Trade settlement computation completed'))) {
+        console.log('   Status: Computation completed successfully');
+        console.log('   Encrypted balances updated on-chain');
+        
+        // Update trade status in database
+        await updateTradeSettlementByTx(tx.signature, 'settled');
+      }
+    }
+
     // Look for health check failure logs
     // Format: "HEALTH_LIQUIDATABLE:<margin_pubkey>"
     for (const log of logs) {
@@ -52,8 +68,5 @@ export async function handleHeliusWebhook(body: any): Promise<void> {
         }
       }
     }
-
-    // You can add more event handlers here
-    // For example, listening for TradeExecuted events for analytics
   }
 }
