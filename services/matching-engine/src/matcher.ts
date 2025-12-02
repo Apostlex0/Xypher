@@ -1,5 +1,7 @@
 import { orderbook } from './orderbook';
 import { settleMatchOnChain } from './settlement';
+import { saveTrade, updateTradeSettlement } from './database';
+import { randomUUID } from 'crypto';
 
 // Matching interval in milliseconds
 const MATCHING_INTERVAL_MS = 200; // 5 matches/second max
@@ -13,7 +15,7 @@ export function startMatchingLoop(): void {
 
   setInterval(async () => {
     try {
-      const match = orderbook.matchOne();
+      const match = await orderbook.matchOne();
       
       if (!match) {
         // No match found, continue
@@ -26,9 +28,32 @@ export function startMatchingLoop(): void {
       console.log('  Price:', match.price);
       console.log('  Size:', match.size);
 
-      // Settle on-chain (fire-and-forget for MVP)
-      // In production, you'd want a queue with retry logic
-      await settleMatchOnChain(match);
+      // Save trade to database
+      const tradeId = randomUUID();
+      await saveTrade(
+        match.buy.userPubkey,
+        match.sell.userPubkey,
+        match.buy.id,
+        match.sell.id,
+        match.price,
+        match.size,
+        tradeId
+      );
+      console.log('  💾 Trade saved to database:', tradeId);
+
+      // Settle on-chain
+      try {
+        const settlementTx = await settleMatchOnChain(match);
+        
+        // Update trade with settlement tx
+        if (settlementTx) {
+          await updateTradeSettlement(tradeId, 'queued', settlementTx);
+          console.log('  ⛓️  Settlement queued:', settlementTx);
+        }
+      } catch (settlementError) {
+        console.error('  ❌ Settlement failed:', settlementError);
+        await updateTradeSettlement(tradeId, 'failed');
+      }
 
     } catch (error) {
       console.error('❌ Error in matching loop:', error);
