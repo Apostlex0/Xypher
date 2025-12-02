@@ -21,9 +21,11 @@ custom-panic = []
 
 
 [dependencies]
-anchor-lang = "0.32.1"
+anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = "0.32.1"
 arcium-anchor = "0.4.0"
+arcium-client = { version = "0.4.0", default-features = false }
+arcium-macros = "0.4.0"
 
 
 [lints.rust]

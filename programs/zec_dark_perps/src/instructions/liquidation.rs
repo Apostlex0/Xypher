@@ -5,37 +5,37 @@ use crate::error::ErrorCode;
 use crate::state::margin_account::MarginAccount;
 
 /// Liquidate an unhealthy margin account.
-/// 
+///
+/// **PRIVACY:** Balances are encrypted, so we can't read the exact collateral amount.
+/// Instead, we transfer ALL tokens from the vault and reset encrypted balances to zero.
+///
 /// Requirements:
 /// - The margin account must have is_liquidatable = true (set by Arcium health check)
-/// - Liquidator receives the collateral
-/// - Account debt is cleared
-/// 
+/// - Liquidator receives all collateral from the vault
+/// - Encrypted balances are reset to zero
+///
 /// This is a simplified liquidation for MVP:
 /// - Full collateral goes to liquidator
 /// - No partial liquidations
 /// - No liquidation penalty/bonus (can add later)
 pub fn liquidate(ctx: Context<Liquidate>) -> Result<()> {
-    // Check if account is liquidatable
+    // Check if account is liquidatable (set by Arcium health check callback)
     require!(
         ctx.accounts.margin_account.is_liquidatable,
         ErrorCode::HealthyPosition
     );
 
-    let collateral_amount = ctx.accounts.margin_account.collateral;
-    require!(collateral_amount > 0, ErrorCode::InvalidAmount);
+    // Get the actual token balance from the vault (this is public on-chain)
+    let vault_balance = ctx.accounts.margin_vault.amount;
+    require!(vault_balance > 0, ErrorCode::InvalidAmount);
 
     // Prepare seeds for PDA signing
     let owner_key = ctx.accounts.margin_account.owner;
     let bump = ctx.accounts.margin_account.bump;
-    let seeds = &[
-        MarginAccount::SEED_PREFIX,
-        owner_key.as_ref(),
-        &[bump],
-    ];
+    let seeds = &[MarginAccount::SEED_PREFIX, owner_key.as_ref(), &[bump]];
     let signer_seeds = &[&seeds[..]];
 
-    // Transfer collateral from margin vault to liquidator
+    // Transfer ALL collateral from margin vault to liquidator
     let cpi_accounts = Transfer {
         from: ctx.accounts.margin_vault.to_account_info(),
         to: ctx.accounts.liquidator_token_account.to_account_info(),
@@ -46,22 +46,24 @@ pub fn liquidate(ctx: Context<Liquidate>) -> Result<()> {
         cpi_accounts,
         signer_seeds,
     );
-    token::transfer(cpi_ctx, collateral_amount)?;
+    token::transfer(cpi_ctx, vault_balance)?;
 
-    // Clear the account state
+    // Reset encrypted balances to zero
     let margin_account = &mut ctx.accounts.margin_account;
-    margin_account.collateral = 0;
-    margin_account.debt = 0;
+    margin_account.encrypted_collateral = [0u8; 32];
+    margin_account.encrypted_debt = [0u8; 32];
+    margin_account.nonce = 0;
     margin_account.is_liquidatable = false;
 
     // Emit event
     emit!(Liquidated {
         liquidator: ctx.accounts.liquidator.key(),
         margin_account_owner: owner_key,
-        collateral_seized: collateral_amount,
+        collateral_seized: vault_balance,
         timestamp: Clock::get()?.unix_timestamp,
     });
 
+    msg!("Account liquidated. Encrypted balances reset to zero.");
     Ok(())
 }
 
