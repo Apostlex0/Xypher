@@ -1,26 +1,77 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  }
+  
+  .glow-primary-strong {
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.5);
+  }
+  
+  /* Glassmorphism */
+  .glass {
+    background: rgba(26, 26, 26, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Animated gradient */
+  .gradient-shift {
+    background: linear-gradient(
+      45deg,
+      #00ff88,
+      #00ccff,
+      #ff00ff,
+      #00ff88
+    );
+    background-size: 300% 300%;
+    animation: gradient 8s ease infinite;
+  }
+  
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  
+  /* Particle background */
+  .particles {
+    background-image: 
+      radial-gradient(2px 2px at 20% 30%, white, transparent),
+      radial-gradient(2px 2px at 60% 70%, white, transparent),
+      radial-gradient(1px 1px at 50% 50%, white, transparent),
+      radial-gradient(1px 1px at 80% 10%, white, transparent),
+      radial-gradient(1px 1px at 90% 60%, white, transparent);
+    background-size: 200% 200%;
+    animation: particles 20s linear infinite;
+  }
+  
+  @keyframes particles {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+  }
 }

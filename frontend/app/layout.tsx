@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "ZEC Dark Perps - Private Trading",
-  description: "Privacy-first perpetual trading platform on Solana",
+  title: "ZEC Dark Perps | Privacy-First Perpetual Trading",
+  description: "First privacy-preserving perpetual exchange bridging Zcash shielded pools to Solana with sub-100ms execution.",
+  keywords: ["Zcash", "Solana", "DeFi", "Privacy", "Perpetuals", "Dark Pool"],
 };
 
 export default function RootLayout({
@@ -24,12 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="en" className="dark">
+      <body className="antialiased">
         <Providers>
           {children}
+          <Toaster position="bottom-right" theme="dark" />
         </Providers>
       </body>
     </html>
