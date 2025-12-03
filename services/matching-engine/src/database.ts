@@ -494,6 +494,7 @@ export async function upsertPosition(
 export async function getUserPositions(userPubkey: string): Promise<UserPosition[]> {
   try {
     const userHash = hashUserPubkey(userPubkey);
+    const { calculateUnrealizedPnL } = await import('./pricing');
 
     const { data, error } = await supabase
       .from('positions')
@@ -507,9 +508,17 @@ export async function getUserPositions(userPubkey: string): Promise<UserPosition
       return [];
     }
 
-    // Decrypt details and format for frontend
+    // Decrypt details and format for frontend with real-time PnL
     return data.map((position): UserPosition => {
       const details = decryptPositionDetails(position.encrypted_details);
+      
+      // Calculate real-time unrealized PnL using current mark price
+      const unrealizedPnL = calculateUnrealizedPnL(
+        position.side,
+        details.entryPrice,
+        details.size,
+        'SOL-PERP'
+      );
       
       return {
         id: position.id,
@@ -517,7 +526,7 @@ export async function getUserPositions(userPubkey: string): Promise<UserPosition
         size: details.size,
         entryPrice: details.entryPrice,
         leverage: details.leverage,
-        currentPnL: details.currentPnL,
+        currentPnL: unrealizedPnL, // Real-time PnL based on mark price
         status: position.status,
         timestamp: new Date(position.created_at).getTime(),
       };
@@ -525,6 +534,162 @@ export async function getUserPositions(userPubkey: string): Promise<UserPosition
   } catch (error) {
     console.error('Failed to fetch user positions:', error);
     return [];
+  }
+}
+
+/**
+ * Update or create position from trade
+ * Implements Hyperliquid-style position lifecycle
+ */
+export async function updatePositionFromTrade(
+  userPubkey: string,
+  side: 'long' | 'short',
+  size: number,
+  price: number,
+  tradeId: string
+): Promise<boolean> {
+  try {
+    const userHash = hashUserPubkey(userPubkey);
+    
+    // Get existing position
+    const { data: existingPositions } = await supabase
+      .from('positions')
+      .select('*')
+      .eq('user_hash', userHash)
+      .eq('status', 'open')
+      .limit(1);
+    
+    const existingPos = existingPositions?.[0];
+    
+    if (!existingPos) {
+      // No existing position - create new one
+      const details = encryptPositionDetails({
+        userPubkey,
+        size,
+        entryPrice: price,
+        leverage: 10, // Default for MVP
+        currentPnL: 0,
+      });
+      
+      const { error } = await supabase
+        .from('positions')
+        .insert({
+          user_hash: userHash,
+          side,
+          encrypted_details: details,
+          status: 'open',
+        });
+      
+      if (error) {
+        console.error('Error creating position:', error);
+        return false;
+      }
+      
+      console.log(`✅ New ${side} position created: ${size} @ ${price}`);
+      return true;
+    }
+    
+    // Existing position found - update it
+    const oldDetails = decryptPositionDetails(existingPos.encrypted_details);
+    const oldSize = oldDetails.size;
+    const oldEntry = oldDetails.entryPrice;
+    const oldSide = existingPos.side;
+    
+    // Determine if opening or closing
+    const tradeSideNum = side === 'long' ? 1 : -1;
+    const oldSideNum = oldSide === 'long' ? 1 : -1;
+    
+    if (tradeSideNum === oldSideNum) {
+      // Same direction - increase position (weighted average entry)
+      const newSize = oldSize + size;
+      const newEntry = (oldEntry * oldSize + price * size) / newSize;
+      
+      const newDetails = encryptPositionDetails({
+        userPubkey,
+        size: newSize,
+        entryPrice: newEntry,
+        leverage: oldDetails.leverage,
+        currentPnL: oldDetails.currentPnL,
+      });
+      
+      const { error } = await supabase
+        .from('positions')
+        .update({
+          encrypted_details: newDetails,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingPos.id);
+      
+      if (error) {
+        console.error('Error updating position:', error);
+        return false;
+      }
+      
+      console.log(`✅ Position increased: ${oldSize} → ${newSize} @ ${newEntry.toFixed(2)}`);
+      return true;
+    } else {
+      // Opposite direction - reduce or close position
+      const closingSize = Math.min(oldSize, size);
+      const remainingSize = oldSize - closingSize;
+      
+      // Calculate realized PnL on closed portion
+      const realizedPnL = oldSideNum * (price - oldEntry) * closingSize;
+      console.log(`💰 Realized PnL: $${realizedPnL.toFixed(2)} (closed ${closingSize} @ ${price})`);
+      
+      if (remainingSize === 0) {
+        // Position fully closed
+        const { error } = await supabase
+          .from('positions')
+          .update({
+            status: 'closed',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingPos.id);
+        
+        if (error) {
+          console.error('Error closing position:', error);
+          return false;
+        }
+        
+        console.log(`✅ Position closed completely`);
+        
+        // If trade size > old position size, open new position in opposite direction
+        if (size > oldSize) {
+          const newSize = size - oldSize;
+          return updatePositionFromTrade(userPubkey, side, newSize, price, tradeId);
+        }
+        
+        return true;
+      } else {
+        // Position partially closed
+        const newDetails = encryptPositionDetails({
+          userPubkey,
+          size: remainingSize,
+          entryPrice: oldEntry, // Entry stays same for remaining
+          leverage: oldDetails.leverage,
+          currentPnL: oldDetails.currentPnL + realizedPnL,
+        });
+        
+        const { error } = await supabase
+          .from('positions')
+          .update({
+            encrypted_details: newDetails,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingPos.id);
+        
+        if (error) {
+          console.error('Error updating position:', error);
+          return false;
+        }
+        
+        console.log(`✅ Position reduced: ${oldSize} → ${remainingSize}`);
+        return true;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to update position from trade:', error);
+    return false;
   }
 }
 
