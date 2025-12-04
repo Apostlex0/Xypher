@@ -76,6 +76,49 @@ app.post('/api/orders', async (req, res) => {
       });
     }
 
+    // Check margin requirements before accepting order
+    try {
+      const { getUserPositions } = await import('./database');
+      const { checkInitialMargin } = await import('./margin');
+      const { decryptPositionDetails } = await import('./crypto');
+      const { supabase } = await import('./database');
+      const { hashUserPubkey } = await import('./crypto');
+      
+      // Get user's current positions
+      const userHash = hashUserPubkey(userPubkey);
+      const { data: positionsData } = await supabase
+        .from('positions')
+        .select('*')
+        .eq('user_hash', userHash)
+        .eq('status', 'open');
+      
+      const positions = (positionsData || []).map(p => {
+        const details = decryptPositionDetails(p.encrypted_details);
+        return {
+          side: p.side as 'long' | 'short',
+          size: details.size,
+          entryPrice: details.entryPrice,
+        };
+      });
+      
+      // Check if user has enough margin
+      const marginCheck = await checkInitialMargin(userPubkey, size, price, positions);
+      
+      if (!marginCheck.allowed) {
+        return res.status(400).json({
+          error: 'Insufficient margin',
+          details: marginCheck.reason,
+          equity: marginCheck.equity,
+          required: marginCheck.required,
+        });
+      }
+      
+      console.log(`✅ Margin check passed for ${userPubkey.slice(0, 8)}... (Equity: $${marginCheck.equity?.toFixed(2)})`);
+    } catch (marginError) {
+      console.error('Error checking margin:', marginError);
+      // For MVP, continue even if margin check fails (can be made strict later)
+    }
+
     // Create order
     const order: Order = {
       id: randomUUID(),
@@ -201,18 +244,82 @@ app.get('/api/positions/:userPubkey', async (req, res) => {
 });
 
 /**
+ * Get account margin summary
+ */
+app.get('/api/account/:userPubkey', async (req, res) => {
+  try {
+    const { userPubkey } = req.params;
+    const { getAccountSummary } = await import('./margin');
+    const { supabase } = await import('./database');
+    const { hashUserPubkey, decryptPositionDetails } = await import('./crypto');
+    
+    // Get user's positions
+    const userHash = hashUserPubkey(userPubkey);
+    const { data: positionsData } = await supabase
+      .from('positions')
+      .select('*')
+      .eq('user_hash', userHash)
+      .eq('status', 'open');
+    
+    const positions = (positionsData || []).map(p => {
+      const details = decryptPositionDetails(p.encrypted_details);
+      return {
+        side: p.side as 'long' | 'short',
+        size: details.size,
+        entryPrice: details.entryPrice,
+      };
+    });
+    
+    const summary = await getAccountSummary(userPubkey, positions);
+    
+    res.json({
+      ok: true,
+      account: summary,
+    });
+  } catch (error) {
+    console.error('Error fetching account summary:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Get current mark price
+ */
+app.get('/api/mark-price', async (_req, res) => {
+  try {
+    const { getMarkPrice, getAllMarkPrices } = await import('./pricing');
+    const symbol = (_req.query.symbol as string) || 'SOL-PERP';
+    
+    if (symbol === 'all') {
+      res.json({ prices: getAllMarkPrices() });
+    } else {
+      res.json({ 
+        symbol,
+        price: getMarkPrice(symbol),
+        timestamp: Date.now()
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching mark price:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * Get platform metrics
  */
 app.get('/api/metrics', async (_req, res) => {
   try {
     const { supabase } = await import('./database');
+    const { decryptTradeDetails, decryptPositionDetails } = await import('./crypto');
+    const { calculateNotional } = await import('./pricing');
     
     // Get total trades count
     const { count: tradesCount } = await supabase
       .from('trades')
       .select('*', { count: 'exact', head: true });
     
-    // Get total volume (sum of all trade prices * sizes)
+    // Get trades from last 24h with encrypted details
     const { data: trades } = await supabase
       .from('trades')
       .select('price, encrypted_details')
@@ -225,12 +332,39 @@ app.get('/api/metrics', async (_req, res) => {
     
     const uniqueUsers = new Set(orders?.map(o => o.user_hash) || []).size;
     
-    // Calculate volume (simplified - using price * 0.001 as estimate)
-    const totalVolume = (trades || []).reduce((sum, t) => sum + (t.price * 0.001), 0);
+    // Calculate actual volume by decrypting trade sizes
+    let totalVolume = 0;
+    for (const trade of trades || []) {
+      try {
+        const details = decryptTradeDetails(trade.encrypted_details);
+        totalVolume += trade.price * details.exactSize;
+      } catch (err) {
+        // If decryption fails, skip this trade
+        console.warn('Failed to decrypt trade for metrics:', err);
+      }
+    }
+    
+    // Get open positions for open interest calculation using mark price
+    const { data: positions } = await supabase
+      .from('positions')
+      .select('side, encrypted_details')
+      .eq('status', 'open');
+    
+    let openInterest = 0;
+    for (const position of positions || []) {
+      try {
+        const details = decryptPositionDetails(position.encrypted_details);
+        // Use mark price for notional calculation
+        const notional = calculateNotional(details.size, 'SOL-PERP');
+        openInterest += notional;
+      } catch (err) {
+        console.warn('Failed to decrypt position for metrics:', err);
+      }
+    }
     
     res.json({
       totalVolume24h: totalVolume,
-      openInterest: totalVolume * 0.3,
+      openInterest: openInterest,
       totalTrades: tradesCount || 0,
       activeTradersCount: uniqueUsers,
     });

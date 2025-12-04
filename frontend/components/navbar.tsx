@@ -47,7 +47,7 @@ export default function Navbar() {
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all duration-300" />
               <div className="relative w-10 h-10 bg-gradient-to-br from-primary to-primary/50 rounded-lg flex items-center justify-center">
-                <span className="text-black font-bold text-xl">Z</span>
+                <span className="text-black font-bold text-xl">Xypher</span>
               </div>
             </div>
             <span className="text-xl md:text-2xl font-bold tracking-tight">

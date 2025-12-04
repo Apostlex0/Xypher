@@ -40,13 +40,6 @@ export default function TechStackSection() {
       link: 'https://solana.com',
     },
     {
-      name: 'Pump Fun',
-      letter: 'P',
-      category: 'INFRASTRUCTURE',
-      description: 'Cross-chain liquidity protocol enabling seamless asset transfers between networks.',
-      link: '#',
-    },
-    {
       name: 'Unstoppable',
       letter: 'U',
       category: 'INFRASTRUCTURE',

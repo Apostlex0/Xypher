@@ -1,6 +1,7 @@
 import { orderbook } from './orderbook';
 import { settleMatchOnChain } from './settlement';
-import { saveTrade, updateTradeSettlement } from './database';
+import { saveTrade, updateTradeSettlement, updatePositionFromTrade } from './database';
+import { updateMarkPrice } from './pricing';
 import { randomUUID } from 'crypto';
 
 // Matching interval in milliseconds
@@ -40,6 +41,14 @@ export function startMatchingLoop(): void {
         tradeId
       );
       console.log('  💾 Trade saved to database:', tradeId);
+
+      // Update mark price with this trade
+      updateMarkPrice('SOL-PERP', match.price);
+      console.log('  📊 Mark price updated:', match.price);
+
+      // Update positions for both users
+      await updatePositionFromTrade(match.buy.userPubkey, 'long', match.size, match.price, tradeId);
+      await updatePositionFromTrade(match.sell.userPubkey, 'short', match.size, match.price, tradeId);
 
       // Settle on-chain
       try {
