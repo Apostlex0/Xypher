@@ -1,3 +1,8 @@
+
+**Program ID (Devnet):** `7TeV1Vdps9eaMv8mfcXJgNsEzWBJwNi4kHfqaVkEu95u`
+
+**Arcium MPC:** Integrated for encrypted balance updates
+
 # ZEC Dark Perps - Privacy-Preserving Perpetual Futures on Solana
 
 > A Hyperliquid-inspired perpetual futures exchange with privacy-first architecture using Arcium MPC and encrypted storage.
@@ -474,9 +479,5 @@ This is a research project exploring privacy-preserving DeFi. Contributions welc
 ## 📞 Contact
 
 Built with ❤️ for privacy-preserving DeFi
-
-**Program ID (Devnet):** `7TeV1Vdps9eaMv8mfcXJgNsEzWBJwNi4kHfqaVkEu95u`
-
-**Arcium MPC:** Integrated for encrypted balance updates
 
 **Status:** MVP - Core trading functional, bridge in development
