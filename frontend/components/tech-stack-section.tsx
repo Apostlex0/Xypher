@@ -39,13 +39,6 @@ export default function TechStackSection() {
       description: 'Base layer blockchain providing fast settlement and SPL token infrastructure for wZEC.',
       link: 'https://solana.com',
     },
-    {
-      name: 'Unstoppable',
-      letter: 'U',
-      category: 'INFRASTRUCTURE',
-      description: 'Wallet integration providing seamless WalletConnect support for Zcash and Solana.',
-      link: 'https://unstoppable.money',
-    },
   ]
 
   return (
